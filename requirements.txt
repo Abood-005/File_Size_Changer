@@ -1,0 +1,10 @@
+customtkinter>=5.2
+Pillow>=10.0
+numpy>=1.24
+pymupdf>=1.24
+pikepdf>=8.0
+tkinterdnd2>=0.4      # drag and drop; app still runs without it
+pillow-heif>=0.15     # optional: HEIC/HEIF/AVIF input
+
+# Video and audio need ffmpeg + ffprobe on PATH (not a pip package):
+#   winget install Gyan.FFmpeg
