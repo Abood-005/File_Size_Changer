@@ -1,111 +1,110 @@
 # Squeeze
 
-A desktop app that compresses files to a size you pick — and tells you honestly
-what that cost.
+Desktop app for shrinking files down to a size you pick. Drop files in, type
+`500 KB` or `8 MB` (or pick a percentage), hit Compress.
 
-Drop files in, type a target (`500 KB`, `8 MB`, or "50% of original"), hit
-Compress. Every file gets an engine chosen by type, a real quality measurement,
-and a plain-English note about what was given up.
+It always tries lossless first and only lowers quality if it has to. When it
+does, it tells you how much was lost instead of hiding it.
 
-```bash
-python app.py
+![Squeeze](assets/screenshot.png)
+
+## Running it
+
+You need Python 3.12. (3.15 currently ships a Tk that hangs on Windows, so the
+window never opens.)
+
+```
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
 ```
 
-Or double-click `Squeeze.bat`.
+Then double-click `Squeeze.bat`, or run:
 
-## The honest bit, first
-
-"Compress to any size without losing quality" is not physically possible.
-Information theory says so: an arbitrary file cannot be shrunk to an arbitrary
-size and still be the same file. So Squeeze does the next best thing — it works
-in tiers and always tells you which one it landed on:
-
-| Tier | Meaning |
-|---|---|
-| **Lossless** | Decoded content is bit-for-bit identical. Nothing was lost. |
-| **Near-lossless** | Re-encoded at full resolution and top quality. No visible difference. |
-| **Lossy** | Quality and/or resolution were reduced. You get a PSNR/SSIM number and a verdict. |
-| **Unchanged** | Nothing beat the original, so it was copied untouched. |
-
-Every file tries lossless **first**. It only escalates when the target demands
-it. When a target simply cannot be reached without destroying the file, Squeeze
-says so instead of producing garbage.
-
-## What it does per format
-
-**Images** — `.jpg .png .webp .gif .bmp .tiff .heic .avif` and friends.
-Lossless re-encode first. If that's too big it walks a ladder that prefers
-*reducing resolution over grinding the quality knob down*, because a clean
-smaller image beats a full-size one full of blocking artifacts at the same byte
-count. Reports PSNR and SSIM measured against the original at full resolution,
-so resolution loss shows up in the score rather than hiding behind it. Animated
-GIF/WebP keep every frame; GIFs get a shared palette so frame-delta compression
-survives. ICC colour profiles are preserved.
-
-**PDF** — three escalating tiers:
-1. Garbage-collect dead objects, subset fonts, recompress streams. Fully lossless.
-2. Downsample and re-encode only the *embedded raster images*. Text stays
-   selectable and vectors stay sharp — this is what "keeping the content" really
-   means for a document.
-3. Rasterise whole pages. Opt-in only, because it turns text into pixels.
-
-**Video & audio** — via ffmpeg. Bitrate is *solved* from `target ÷ duration`
-rather than guessed, encoded two-pass so the number is respected, then corrected
-up to twice if it over- or undershoots. Full duration is always kept — no frames
-dropped, no clipping. Resolution steps down only when the bitrate is too thin to
-justify the pixels. `.wav`/`.flac` try lossless FLAC before anything lossy.
-
-**Office & zip packages** — `.docx .xlsx .pptx .epub .zip .jar` …
-Repacked at maximum deflate (lossless, contents identical). If that's not
-enough, only the embedded images are recompressed, each kept in its original
-format so nothing inside the package breaks. Text and formatting are never
-touched. EPUB's stored-first `mimetype` entry is handled correctly.
-
-**Everything else** — lossless zip (deflate, falling back to LZMA). If the data
-is incompressible it says so and copies the original rather than handing you a
-`.zip` that's bigger than what you started with.
-
-## Setup
-
-```bash
-pip install -r requirements.txt
+```
+.venv\Scripts\python app.py
 ```
 
-For video and audio you also need ffmpeg on PATH:
+Video and audio need ffmpeg on your PATH:
 
-```bash
+```
 winget install Gyan.FFmpeg
 ```
 
-The header shows a chip per capability — green means available. Missing ffmpeg
-only disables video/audio; everything else still works.
+Without it, everything else still works. The badges in the top right show
+what's available.
+
+## What happens to each file
+
+Every result is labelled with how it got there:
+
+- **Lossless**: identical content, just stored better.
+- **Near-lossless**: re-encoded at full resolution and high quality. You won't
+  see a difference.
+- **Lossy**: quality or resolution was reduced to hit the target. You get a
+  PSNR/SSIM score so you know how much.
+- **Unchanged**: nothing beat the original, so it's copied as-is.
+
+If a target can't be reached without wrecking the file, it says so and stops.
+
+### Images
+
+jpg, png, webp, gif, bmp, tiff, heic, avif.
+
+Lossless re-encode first. After that it would rather shrink the resolution a
+bit than crank the quality down, since a smaller clean image looks better than
+a full-size blocky one. Animated GIF/WebP keep all their frames. Colour
+profiles are kept.
+
+### PDF
+
+1. Clean up unused objects, subset fonts, recompress streams (lossless).
+2. Recompress only the images inside. Text stays selectable.
+3. Turn whole pages into images. Off by default because you lose selectable
+   text.
+
+### Video and audio
+
+The bitrate is worked out from target size and duration, then encoded in two
+passes so the file actually lands near the target. Nothing gets cut. Resolution
+only drops when the bitrate is too low for it. WAV and FLAC try lossless FLAC
+first.
+
+### Office files and zips
+
+docx, xlsx, pptx, epub, zip, jar.
+
+Repacked with maximum compression first. If that's not enough, only the images
+inside get recompressed, in their original format, so the document still opens
+normally.
+
+### Anything else
+
+Gets zipped. If it doesn't compress (already compressed data, for example), you
+get the original back instead of a bigger zip.
 
 ## Options
 
-- **Allow resizing** — off keeps every image and video at native resolution, so
-  only the quality knob moves.
-- **Quality floor** — the encoder will never go below this. Raise it if you'd
-  rather miss a target than accept mush.
-- **Strip metadata** — drops EXIF/XMP. ICC colour profiles are always kept.
-- **Let PDFs be rasterised** — enables PDF tier 3. Off by default.
-- **Video codec** — H.265 is roughly 30% smaller than H.264 at equal quality,
-  and several times slower to encode.
+- **Allow resizing**: turn off to keep images and video at their original
+  resolution.
+- **Quality floor**: it won't go below this. Raise it if you'd rather miss the
+  target than get a mushy file.
+- **Strip metadata**: removes EXIF/XMP.
+- **Let PDFs be rasterised**: enables PDF step 3.
+- **Video codec**: H.265 makes smaller files than H.264 but encodes a lot
+  slower.
 
-Results land beside each original with a `_small` suffix, or in a folder you
-choose. Double-click any finished row to reveal the output in Explorer.
+Output goes next to the original with a `_small` suffix, or into a folder you
+choose. Double-click a finished file to open its location.
 
-## Layout
+## Code layout
 
 ```
-app.py                    the UI
+app.py              UI
 squeeze/
-  core.py                 shared types, size parsing, the parameter search
-  quality.py              PSNR / SSIM measurement
-  pipeline.py             engine selection, one call the UI makes
-  engines/
-    image.py  pdf.py  media.py  archive.py  generic.py
+  core.py           shared types, size parsing, search
+  quality.py        PSNR / SSIM
+  pipeline.py       picks the engine for a file
+  engines/          image, pdf, media, archive, generic
 ```
 
-Engines are tried in order and the first one that claims a file wins;
-`generic.py` catches everything else. Adding a format means adding one class
-with a `handles()` and a `compress()`.
+Each engine has `handles()` and `compress()`. To add a format, add an engine.

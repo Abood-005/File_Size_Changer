@@ -26,10 +26,10 @@ def noop_progress(fraction: float, message: str) -> None:  # pragma: no cover
 class Fidelity(enum.IntEnum):
     """How much of the original was given up to hit the target."""
 
-    LOSSLESS = 0       # decoded content is bit-for-bit identical
+    LOSSLESS = 0       # decoded content is bit for bit identical
     NEAR_LOSSLESS = 1  # re-encoded at high quality, no resampling
     LOSSY = 2          # quality and/or resolution was reduced
-    UNCHANGED = 3      # nothing beat the original, copied as-is
+    UNCHANGED = 3      # nothing beat the original, copied as is
     FAILED = 4
 
     @property
@@ -97,9 +97,7 @@ class CompressionError(Exception):
     pass
 
 
-# --------------------------------------------------------------------------
 # size formatting / parsing
-# --------------------------------------------------------------------------
 
 def human(size: float) -> str:
     if size is None:
@@ -131,9 +129,7 @@ def parse_size(text: str) -> Optional[int]:
         return None
 
 
-# --------------------------------------------------------------------------
 # parameter search
-# --------------------------------------------------------------------------
 
 def search_quality(
     measure: Callable[[int], int],
@@ -179,9 +175,7 @@ def scale_ladder(allow_downscale: bool) -> list[float]:
     return [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.42, 0.35, 0.28, 0.22]
 
 
-# --------------------------------------------------------------------------
 # subprocess helper (no flashing console windows on Windows)
-# --------------------------------------------------------------------------
 
 def popen_kwargs() -> dict:
     kwargs: dict = {}

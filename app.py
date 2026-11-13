@@ -33,31 +33,43 @@ except Exception:  # pragma: no cover
 # --------------------------------------------------------------------------
 # palette
 # --------------------------------------------------------------------------
-BG = "#0e1016"
-CARD = "#161923"
-CARD_HI = "#1d2130"
-BORDER = "#262b3b"
-TEXT = "#e8eaf0"
-MUTED = "#868ea3"
-FAINT = "#5d6478"
-ACCENT = "#6366f1"
-ACCENT_HI = "#818cf8"
+# SparkWeb Digital: warm near-black, bone white, signal red-orange.
+BG = "#0f0e0d"
+CARD = "#171514"
+CARD_HI = "#211e1c"
+BORDER = "#2e2926"
+TEXT = "#ede6da"
+MUTED = "#a39a90"
+FAINT = "#6b625b"
+ACCENT = "#e8502e"
+ACCENT_HI = "#ff6a45"
+ACCENT_DIM = "#7a1d10"
+ACCENT_BG = "#2a1510"
+ON_ACCENT = "#fff8f0"
+WARN = "#f2a48c"
 
 TIER_COLOR = {
-    Fidelity.LOSSLESS: "#34d399",
-    Fidelity.NEAR_LOSSLESS: "#22d3ee",
-    Fidelity.LOSSY: "#fbbf24",
-    Fidelity.UNCHANGED: "#8b93a7",
-    Fidelity.FAILED: "#f87171",
+    Fidelity.LOSSLESS: TEXT,
+    Fidelity.NEAR_LOSSLESS: "#f2c4b4",
+    Fidelity.LOSSY: ACCENT_HI,
+    Fidelity.UNCHANGED: FAINT,
+    Fidelity.FAILED: "#ff3b30",
 }
 
 BADGE = {
-    "image": ("IMG", "#8b5cf6"),
-    "document": ("PDF", "#ef4444"),
-    "media": ("A/V", "#0ea5e9"),
-    "package": ("ZIP", "#f59e0b"),
-    "file": ("FILE", "#64748b"),
+    "image": "IMG",
+    "document": "PDF",
+    "media": "A/V",
+    "package": "ZIP",
+    "file": "FILE",
 }
+
+ICON = Path(__file__).with_name("assets") / "icon.png"
+
+
+def spaced(text: str) -> str:
+    """Tracked-out uppercase label, like the editorial caps on the site."""
+    return " ".join(text.upper())
 
 PRESETS = [("100 KB", 100 * KB), ("500 KB", 500 * KB), ("1 MB", MB),
            ("5 MB", 5 * MB), ("8 MB", 8 * MB), ("25 MB", 25 * MB)]
@@ -90,7 +102,8 @@ def reveal(path: Path) -> None:
 
 class FileRow(ctk.CTkFrame):
     def __init__(self, master, path: Path, on_remove, fonts):
-        super().__init__(master, fg_color=CARD, corner_radius=10)
+        super().__init__(master, fg_color=CARD, corner_radius=4,
+                         border_width=1, border_color=BORDER)
         self.path = path
         self.result: Result | None = None
         self._on_remove = on_remove
@@ -98,10 +111,10 @@ class FileRow(ctk.CTkFrame):
 
         size = path.stat().st_size
         kind = pick_engine(path).kind
-        text, color = BADGE.get(kind, BADGE["file"])
+        text = BADGE.get(kind, BADGE["file"])
 
-        self.badge = ctk.CTkLabel(self, text=text, font=fonts["badge"], text_color="#ffffff",
-                                  fg_color=color, corner_radius=6, width=42, height=22)
+        self.badge = ctk.CTkLabel(self, text=text, font=fonts["badge"], text_color=ACCENT,
+                                  fg_color=ACCENT_BG, corner_radius=2, width=42, height=22)
         self.badge.grid(row=0, column=0, rowspan=2, padx=(12, 10), pady=12, sticky="n")
 
         self.name = ctk.CTkLabel(self, text=path.name, font=fonts["row_title"],
@@ -116,9 +129,9 @@ class FileRow(ctk.CTkFrame):
                                  text_color=FAINT, anchor="e", width=104)
         self.tier.grid(row=0, column=3, sticky="e", padx=(0, 6), pady=(11, 0))
 
-        self.close = ctk.CTkButton(self, text="×", width=26, height=26, corner_radius=6,
+        self.close = ctk.CTkButton(self, text="×", width=26, height=26, corner_radius=2,
                                    font=fonts["close"], fg_color="transparent",
-                                   text_color=FAINT, hover_color=CARD_HI,
+                                   text_color=FAINT, hover_color=ACCENT_BG,
                                    command=lambda: self._on_remove(self))
         self.close.grid(row=0, column=4, rowspan=2, padx=(0, 8), pady=(9, 0), sticky="n")
 
@@ -126,7 +139,7 @@ class FileRow(ctk.CTkFrame):
                                    text_color=FAINT, anchor="w", justify="left")
         self.detail.grid(row=1, column=1, columnspan=3, sticky="ew", pady=(1, 11))
 
-        self.bar = ctk.CTkProgressBar(self, height=3, corner_radius=2,
+        self.bar = ctk.CTkProgressBar(self, height=2, corner_radius=0,
                                       fg_color=CARD_HI, progress_color=ACCENT)
         self.bar.set(0)
 
@@ -177,7 +190,7 @@ class FileRow(ctk.CTkFrame):
             line += f"   —   {result.metric}"
         if not result.met_target:
             line = f"target not reached — {line}"
-        self.detail.configure(text=line, text_color=MUTED if result.met_target else "#fbbf24")
+        self.detail.configure(text=line, text_color=MUTED if result.met_target else WARN)
 
     def _open(self, _event=None):
         target = self.result.dst if (self.result and self.result.dst) else self.path
@@ -189,11 +202,11 @@ class FileRow(ctk.CTkFrame):
 # --------------------------------------------------------------------------
 
 def card(parent, title: str, fonts) -> ctk.CTkFrame:
-    wrapper = ctk.CTkFrame(parent, fg_color=CARD, corner_radius=12,
+    wrapper = ctk.CTkFrame(parent, fg_color=CARD, corner_radius=4,
                            border_width=1, border_color=BORDER)
     wrapper.grid_columnconfigure(0, weight=1)
-    ctk.CTkLabel(wrapper, text=title.upper(), font=fonts["card_title"],
-                 text_color=FAINT, anchor="w").grid(
+    ctk.CTkLabel(wrapper, text=spaced(title), font=fonts["card_title"],
+                 text_color=ACCENT, anchor="w").grid(
         row=0, column=0, sticky="ew", padx=16, pady=(13, 8))
     return wrapper
 
@@ -214,20 +227,31 @@ class App(ctk.CTk, _Base):
         self.geometry("1200x780")
         self.minsize(1020, 680)
         self.configure(fg_color=BG)
+        if ICON.exists():
+            try:
+                from tkinter import PhotoImage
+                self._icon = PhotoImage(file=str(ICON))
+                self.iconphoto(True, self._icon)
+            except Exception:
+                pass
 
+        # Serif display + tracked mono labels, after sparkwebdigital.ca.
         self.fonts = {
-            "h1": ctk.CTkFont("Segoe UI Semibold", 23),
+            "h1": ctk.CTkFont("Georgia", 34),
+            "h1_italic": ctk.CTkFont("Georgia", 34, slant="italic"),
+            "eyebrow": ctk.CTkFont("Consolas", 11, weight="bold"),
             "sub": ctk.CTkFont("Segoe UI", 12),
-            "card_title": ctk.CTkFont("Segoe UI Semibold", 11),
+            "card_title": ctk.CTkFont("Consolas", 11, weight="bold"),
             "body": ctk.CTkFont("Segoe UI", 12),
             "small": ctk.CTkFont("Segoe UI", 11),
-            "badge": ctk.CTkFont("Segoe UI Semibold", 11),
+            "mono_small": ctk.CTkFont("Consolas", 11),
+            "badge": ctk.CTkFont("Consolas", 11, weight="bold"),
             "row_title": ctk.CTkFont("Segoe UI Semibold", 13),
             "row_size": ctk.CTkFont("Consolas", 12),
             "row_detail": ctk.CTkFont("Segoe UI", 11),
             "close": ctk.CTkFont("Segoe UI", 17),
-            "drop": ctk.CTkFont("Segoe UI", 13),
-            "button": ctk.CTkFont("Segoe UI Semibold", 14),
+            "drop": ctk.CTkFont("Georgia", 16, slant="italic"),
+            "button": ctk.CTkFont("Consolas", 14, weight="bold"),
         }
 
         self.rows: list[FileRow] = []
@@ -238,7 +262,10 @@ class App(ctk.CTk, _Base):
         self._events: queue.Queue = queue.Queue()
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
+        # thin signal-red rule across the top, like the site
+        ctk.CTkFrame(self, height=2, fg_color=ACCENT, corner_radius=0).grid(
+            row=0, column=0, sticky="ew")
         self._build_header()
         self._build_body()
         self._build_statusbar()
@@ -254,37 +281,43 @@ class App(ctk.CTk, _Base):
 
     def _build_header(self):
         header = ctk.CTkFrame(self, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", padx=22, pady=(18, 10))
+        header.grid(row=1, column=0, sticky="ew", padx=22, pady=(14, 10))
         header.grid_columnconfigure(1, weight=1)
 
         left = ctk.CTkFrame(header, fg_color="transparent")
         left.grid(row=0, column=0, sticky="w")
-        ctk.CTkLabel(left, text="Squeeze", font=self.fonts["h1"],
-                     text_color=TEXT, anchor="w").pack(anchor="w")
+        ctk.CTkLabel(left, text=spaced("SparkWeb · file tools"), font=self.fonts["eyebrow"],
+                     text_color=ACCENT, anchor="w").pack(anchor="w")
+        title = ctk.CTkFrame(left, fg_color="transparent")
+        title.pack(anchor="w")
+        ctk.CTkLabel(title, text="Squeeze", font=self.fonts["h1"],
+                     text_color=TEXT, anchor="w").pack(side="left")
+        ctk.CTkLabel(title, text=" anything", font=self.fonts["h1_italic"],
+                     text_color=ACCENT, anchor="w").pack(side="left")
         ctk.CTkLabel(
             left,
             text="Hits your target size losslessly when it can, and tells you exactly what it cost when it can't.",
             font=self.fonts["sub"], text_color=MUTED, anchor="w",
-        ).pack(anchor="w", pady=(2, 0))
+        ).pack(anchor="w", pady=(0, 0))
 
         chips = ctk.CTkFrame(header, fg_color="transparent")
-        chips.grid(row=0, column=2, sticky="e")
+        chips.grid(row=0, column=2, sticky="se")
         for label, ok in (("images", True), ("pdf", True),
                           ("video/audio", bool(FFMPEG)), ("heic", HEIF_OK)):
             ctk.CTkLabel(
-                chips, text=f"  {'●' if ok else '○'} {label}  ",
-                font=self.fonts["badge"], height=24, corner_radius=12,
-                fg_color=CARD, text_color="#34d399" if ok else FAINT,
+                chips, text=f"  {'●' if ok else '○'}  {spaced(label)}  ",
+                font=self.fonts["badge"], height=24, corner_radius=2,
+                fg_color=ACCENT_BG if ok else CARD, text_color=ACCENT if ok else FAINT,
             ).pack(side="left", padx=3)
 
     def _build_body(self):
         body = ctk.CTkFrame(self, fg_color="transparent")
-        body.grid(row=1, column=0, sticky="nsew", padx=22, pady=(0, 6))
+        body.grid(row=2, column=0, sticky="nsew", padx=22, pady=(0, 6))
         body.grid_columnconfigure(0, weight=1)
         body.grid_rowconfigure(1, weight=1)
 
         # ---- drop zone
-        self.drop = ctk.CTkFrame(body, fg_color=CARD, corner_radius=12,
+        self.drop = ctk.CTkFrame(body, fg_color=CARD, corner_radius=4,
                                  border_width=2, border_color=BORDER, height=92)
         self.drop.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         self.drop.grid_propagate(False)
@@ -292,11 +325,11 @@ class App(ctk.CTk, _Base):
         hint = ("Drop files or folders here" if DND_OK else "Click to add files")
         self.drop_label = ctk.CTkLabel(
             self.drop, text=f"{hint}   ·   or click to browse",
-            font=self.fonts["drop"], text_color=MUTED,
+            font=self.fonts["drop"], text_color=TEXT,
         )
-        self.drop_label.grid(row=0, column=0, pady=(24, 2))
-        ctk.CTkLabel(self.drop, text="images · pdf · video · audio · office · anything else",
-                     font=self.fonts["small"], text_color=FAINT).grid(row=1, column=0, pady=(0, 22))
+        self.drop_label.grid(row=0, column=0, pady=(22, 2))
+        ctk.CTkLabel(self.drop, text=spaced("images · pdf · video · audio · office · anything else"),
+                     font=self.fonts["mono_small"], text_color=FAINT).grid(row=1, column=0, pady=(0, 20))
         for widget in (self.drop, self.drop_label):
             widget.bind("<Button-1>", lambda _e: self._browse_files())
             widget.bind("<Enter>", lambda _e: self.drop.configure(border_color=ACCENT))
@@ -338,10 +371,10 @@ class App(ctk.CTk, _Base):
 
         self.mode = ctk.CTkSegmentedButton(
             box, values=["Exact size", "% of original"], command=self._on_mode,
-            font=self.fonts["small"], height=30, corner_radius=8,
+            font=self.fonts["small"], height=30, corner_radius=3,
             selected_color=ACCENT, selected_hover_color=ACCENT_HI,
             unselected_color=CARD_HI, unselected_hover_color=BORDER,
-            fg_color=CARD_HI, text_color=TEXT,
+            fg_color=CARD_HI, text_color=ON_ACCENT,
         )
         self.mode.set("Exact size")
         self.mode.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 12))
@@ -350,15 +383,18 @@ class App(ctk.CTk, _Base):
         self.exact.grid(row=2, column=0, sticky="ew", padx=16)
         self.exact.grid_columnconfigure(0, weight=1)
         self.size_entry = ctk.CTkEntry(
-            self.exact, font=ctk.CTkFont("Consolas", 15), height=38, corner_radius=8,
+            self.exact, font=ctk.CTkFont("Consolas", 15), height=38, corner_radius=3,
             fg_color=CARD_HI, border_color=BORDER, text_color=TEXT, justify="center",
         )
+        self.size_entry.bind("<FocusIn>", lambda _e: self.size_entry.configure(border_color=ACCENT))
+        self.size_entry.bind("<FocusOut>", lambda _e: self.size_entry.configure(border_color=BORDER))
         self.size_entry.insert(0, "2")
         self.size_entry.grid(row=0, column=0, sticky="ew")
         self.unit = ctk.CTkOptionMenu(
-            self.exact, values=["KB", "MB", "GB"], width=80, height=38, corner_radius=8,
+            self.exact, values=["KB", "MB", "GB"], width=80, height=38, corner_radius=3,
             font=self.fonts["body"], fg_color=CARD_HI, button_color=CARD_HI,
             button_hover_color=BORDER, text_color=TEXT, dropdown_fg_color=CARD_HI,
+            dropdown_hover_color=ACCENT_BG, dropdown_text_color=TEXT,
         )
         self.unit.set("MB")
         self.unit.grid(row=0, column=1, padx=(8, 0))
@@ -368,8 +404,8 @@ class App(ctk.CTk, _Base):
         for index, (label, value) in enumerate(PRESETS):
             chips.grid_columnconfigure(index % 3, weight=1)
             ctk.CTkButton(
-                chips, text=label, height=26, corner_radius=6, font=self.fonts["small"],
-                fg_color=CARD_HI, hover_color=BORDER, text_color=MUTED,
+                chips, text=label, height=26, corner_radius=2, font=self.fonts["mono_small"],
+                fg_color=CARD_HI, hover_color=ACCENT_BG, text_color=MUTED,
                 command=lambda v=value: self._apply_preset(v),
             ).grid(row=index // 3, column=index % 3, sticky="ew", padx=2, pady=2)
 
@@ -417,16 +453,18 @@ class App(ctk.CTk, _Base):
         ctk.CTkLabel(codec, text="Video", font=self.fonts["small"],
                      text_color=MUTED).grid(row=0, column=0, sticky="w")
         self.codec = ctk.CTkOptionMenu(
-            codec, values=["H.264 (fast)", "H.265 (smaller)"], height=28, corner_radius=6,
+            codec, values=["H.264 (fast)", "H.265 (smaller)"], height=28, corner_radius=3,
             font=self.fonts["small"], fg_color=CARD_HI, button_color=CARD_HI,
             button_hover_color=BORDER, text_color=TEXT, dropdown_fg_color=CARD_HI,
+            dropdown_hover_color=ACCENT_BG, dropdown_text_color=TEXT,
         )
         self.codec.grid(row=0, column=1, sticky="e")
 
     def _switch(self, parent, row, text, default):
         variable = ctk.BooleanVar(value=default)
         ctk.CTkSwitch(parent, text=text, variable=variable, font=self.fonts["body"],
-                      text_color=TEXT, progress_color=ACCENT, button_color="#cbd5e1",
+                      text_color=TEXT, progress_color=ACCENT, button_color=TEXT,
+                      button_hover_color=ON_ACCENT,
                       fg_color=BORDER, width=36, height=18, switch_width=36,
                       switch_height=18).grid(row=row, column=0, sticky="w",
                                              padx=16, pady=5)
@@ -444,12 +482,12 @@ class App(ctk.CTk, _Base):
         buttons = ctk.CTkFrame(box, fg_color="transparent")
         buttons.grid(row=2, column=0, sticky="ew", padx=16, pady=(8, 14))
         buttons.grid_columnconfigure((0, 1), weight=1)
-        ctk.CTkButton(buttons, text="Choose folder", height=28, corner_radius=6,
-                      font=self.fonts["small"], fg_color=CARD_HI, hover_color=BORDER,
+        ctk.CTkButton(buttons, text="Choose folder", height=28, corner_radius=2,
+                      font=self.fonts["small"], fg_color=CARD_HI, hover_color=ACCENT_BG,
                       text_color=TEXT, command=self._choose_output).grid(
             row=0, column=0, sticky="ew", padx=(0, 4))
-        ctk.CTkButton(buttons, text="Beside original", height=28, corner_radius=6,
-                      font=self.fonts["small"], fg_color=CARD_HI, hover_color=BORDER,
+        ctk.CTkButton(buttons, text="Beside original", height=28, corner_radius=2,
+                      font=self.fonts["small"], fg_color=CARD_HI, hover_color=ACCENT_BG,
                       text_color=TEXT, command=self._reset_output).grid(
             row=0, column=1, sticky="ew", padx=(4, 0))
 
@@ -457,23 +495,24 @@ class App(ctk.CTk, _Base):
         actions = ctk.CTkFrame(parent, fg_color="transparent")
         actions.grid(row=1, column=0, sticky="ew", pady=(12, 0))
         actions.grid_columnconfigure(0, weight=1)
-        self.go = ctk.CTkButton(actions, text="Compress", height=46, corner_radius=10,
+        self.go = ctk.CTkButton(actions, text=spaced("Compress"), height=46, corner_radius=3,
                                 font=self.fonts["button"], fg_color=ACCENT,
-                                hover_color=ACCENT_HI, command=self._start)
+                                hover_color=ACCENT_HI, text_color=ON_ACCENT,
+                                command=self._start)
         self.go.grid(row=0, column=0, sticky="ew")
-        self.clear = ctk.CTkButton(actions, text="Clear list", height=30, corner_radius=8,
-                                   font=self.fonts["small"], fg_color="transparent",
+        self.clear = ctk.CTkButton(actions, text=spaced("Clear list"), height=30, corner_radius=3,
+                                   font=self.fonts["mono_small"], fg_color="transparent",
                                    hover_color=CARD, text_color=FAINT, command=self._clear)
         self.clear.grid(row=1, column=0, sticky="ew", pady=(8, 0))
 
     def _build_statusbar(self):
         bar = ctk.CTkFrame(self, fg_color="transparent", height=34)
-        bar.grid(row=2, column=0, sticky="ew", padx=22, pady=(0, 14))
+        bar.grid(row=3, column=0, sticky="ew", padx=22, pady=(0, 14))
         bar.grid_columnconfigure(0, weight=1)
-        self.status = ctk.CTkLabel(bar, text="Ready.", font=self.fonts["small"],
+        self.status = ctk.CTkLabel(bar, text="Ready.", font=self.fonts["mono_small"],
                                    text_color=MUTED, anchor="w")
         self.status.grid(row=0, column=0, sticky="ew")
-        self.total = ctk.CTkProgressBar(bar, height=4, corner_radius=2, width=260,
+        self.total = ctk.CTkProgressBar(bar, height=2, corner_radius=0, width=260,
                                         fg_color=CARD, progress_color=ACCENT)
         self.total.set(0)
         self.total.grid(row=0, column=1, sticky="e")
@@ -615,7 +654,8 @@ class App(ctk.CTk, _Base):
             row.set_pending()
         self.running = True
         self._stop = False
-        self.go.configure(text="Stop after this file", fg_color="#7f1d1d", hover_color="#991b1b")
+        self.go.configure(text=spaced("Stop after this file"),
+                          fg_color=ACCENT_DIM, hover_color="#9a2614")
         self.clear.configure(state="disabled")
         self.total.set(0)
         threading.Thread(target=self._worker, args=(list(self.rows), settings),
@@ -652,7 +692,7 @@ class App(ctk.CTk, _Base):
     def _finish(self, results: list[Result]):
         self.running = False
         self._stop = False
-        self.go.configure(text="Compress", state="normal",
+        self.go.configure(text=spaced("Compress"), state="normal",
                           fg_color=ACCENT, hover_color=ACCENT_HI)
         self.clear.configure(state="normal")
 
